@@ -11,7 +11,7 @@ for d in os.listdir('.'):
     f = open(d)
     b = f.readlines()
     f.close()
-    print "dn: uid=%s,ou=people,dc=neotion,dc=com" % name
+    print "dn: uid=%s,ou=people,dc=domain,dc=com" % name
     print "changetype: modify"
     print "replace: jpegPhoto"
     print "jpegPhoto::",

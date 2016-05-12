@@ -105,7 +105,7 @@ if __name__ == '__main__':
     passwd = os.getenv('ADSLPASS', None)
     if passwd is None:
         raise AssertionError('No passwd')
-    bits, gain, snr = retrieve('192.168.83.1', 'root', passwd)
+    bits, gain, snr = retrieve('192.168.1.1', 'root', passwd)
     generate_html('output.html')
     generate_bits('bits.svg', bits)
     generate_snr('snr.svg', snr)

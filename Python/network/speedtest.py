@@ -10,7 +10,7 @@ import urllib2
 url = 'http://localhost:8080/gencert/cramfs?product=SpeedTest'
 
 p = urllib2.HTTPPasswordMgrWithDefaultRealm()
-p.add_password(None, 'http://localhost:8080/', 'buildrobot', 'passwd')
+p.add_password(None, 'http://localhost:8080/', 'user', 'passwd')
 
 h = urllib2.HTTPBasicAuthHandler(p)
 o = urllib2.build_opener(h)

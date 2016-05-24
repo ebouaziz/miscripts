@@ -11,7 +11,6 @@ from email.header import decode_header
 from time import localtime, mktime, strftime, strptime, time
 
 # Issues:
-#   Does not handle colliding MSGID (reused ones). Collisions do occur!!
 #   Does not handle years (missing from postfix log)
 
 
@@ -32,6 +31,10 @@ class PostfixLog(object):
     def create_db(self, dbpath):
         self._sql = connect(dbpath)
         sql = """
+        CREATE TABLE msgid(id INTEGER PRIMARY KEY AUTOINCREMENT,
+                           qid INTEGER UNIQUE);
+        CREATE INDEX msgid_qid ON msgid(qid);
+
         CREATE TABLE subject(id INTEGER PRIMARY KEY,
                              text TEXT UNIQUE);
         CREATE UNIQUE INDEX subject_text ON subject(text);
@@ -84,6 +87,7 @@ class PostfixLog(object):
         self._sql = connect(dbpath)
 
     def parse(self, year, fp):
+        skipped_qid = set()
         for n, l in enumerate(fp, start=1):
             l = l.strip()
             datestr = l[:15]
@@ -99,9 +103,24 @@ class PostfixLog(object):
             mo = self.MSGID_CRE.match(l)
             if not mo:
                 continue
-            qid = int(mo.group(1), 16)
+            pfqid = int(mo.group(1), 16)
             msg = mo.group(2).strip()
             mo = self.INFO_CRE.match(msg)
+            create = False
+            if mo:
+                if mo.group(1) == 'client':
+                    create = True
+                #elif child == 'cleanup':
+                #    parts = self.extract(msg)
+                #    if 'message-id' in parts:
+                #        if not parts['message-id'].strip('<>'):
+                #            print("Message ID %X" % pfqid)
+                #            create = True
+            qid = self._get_unique_qid(pfqid, create)
+            if qid is None:
+                # print ("Skipping %06X %s" % (pfqid, msg))
+                skipped_qid.add(pfqid)
+                continue
             try:
                 if not mo:
                     if msg == 'removed':
@@ -129,10 +148,22 @@ class PostfixLog(object):
             except (ValueError, TypeError, IntegrityError) as e:
                 raise ValueError('%s "%s" @ line %d' % (str(e), l, n))
         self._sql.commit()
+        print("Skipped %d QIDs" % len(skipped_qid))
+
+    def _get_unique_qid(self, pfqid, create):
+        c = self._sql.cursor()
+        if create:
+            c.execute('INSERT INTO msgid(qid) VALUES (?)', (pfqid, ))
+        c.execute('SELECT id FROM msgid WHERE qid=:qid', {'qid': pfqid})
+        row = c.fetchone()
+        if not row:
+            return None
+        return row[0]
 
     def _remove_msg(self, qid, date):
         c = self._sql.cursor()
         c.execute('INSERT INTO email_removal VALUES (?, ?)', (qid, date))
+        c.execute('DELETE FROM msgid WHERE id=:qid', {'qid': qid})
 
     def _store_msg_subject(self, qid, date, subject):
         mo = self.SUBJECT_CRE.match(subject)
@@ -176,9 +207,9 @@ class PostfixLog(object):
                       (qid, subid))
         else:
             stored_subid = row[0]
-            if stored_subid != subid:
-                print("Subject mismatch: %d %d" % (stored_subid, subid),
-                      file=sys.stderr)
+            #if stored_subid != subid:
+            #    print("Subject mismatch: %d %d" % (stored_subid, subid),
+            #          file=sys.stderr)
         return subid
 
     def _create_msg_non_delivery(self, qid, date, newqid):
@@ -186,6 +217,21 @@ class PostfixLog(object):
 
     def _replace_msg_id(self, qid, date, msg):
         pass
+
+    @classmethod
+    def extract(cls, msg):
+        to_parts = msg.split(',')
+        parts = {}
+        k = None
+        for p in to_parts:
+            m = [x.strip() for x in p.split('=', 1)]
+            if len(m) < 2:
+                if k:
+                    parts[k] = ''.join((parts[k], m[0]))
+                    continue
+            k = m[0]
+            parts[k] = m[1]
+        return parts
 
     def _handle_uid(self, qid, date, msg):
         pass
@@ -198,22 +244,13 @@ class PostfixLog(object):
         c.execute('INSERT INTO email_message VALUES (?, ?)', (qid, msg))
 
     def _handle_from(self, qid, date, msg):
-        from_parts = msg.split(',', 1)
-        self._store_email(qid, 'sender', from_parts[0])
+        from_, _ = msg.split(',', 1)
+        self._store_email(qid, 'sender', from_)
 
     def _handle_to(self, qid, date, msg):
-        to_parts = msg.split(',')
-        self._store_email(qid, 'recipient', to_parts[0])
-        parts = {}
-        k = None
-        for p in to_parts[1:]:
-            m = [x.strip() for x in p.split('=', 1)]
-            if len(m) < 2:
-                if k:
-                    parts[k] = ''.join((parts[k], m[0]))
-                    continue
-            k = m[0]
-            parts[k] = m[1]
+        to_, rem = msg.split(',', 1)
+        self._store_email(qid, 'recipient', to_)
+        parts = self.extract(rem)
         if 'status' in parts:
             status, info = parts['status'].split(' ', 1)
             self._store_status(qid, date, status, info)

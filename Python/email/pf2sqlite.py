@@ -14,8 +14,8 @@ from time import localtime, mktime, strftime, strptime, time
 #   Does not handle colliding MSGID (reused ones). Collisions do occur!!
 #   Does not handle years (missing from postfix log)
 
-class PostfixLog(object):
 
+class PostfixLog(object):
     """
     """
 
@@ -276,7 +276,7 @@ class PostfixLog(object):
                 raise ValueError('No such status: %s' % status)
             c.execute('INSERT INTO status(status) VALUES (?)', (status,))
             c.execute('SELECT id FROM status WHERE status=:status',
-                  {'status': status})
+                      {'status': status})
             row = c.fetchone()
         statusid = row[0]
         return statusid
@@ -291,7 +291,7 @@ class PostfixLog(object):
         row = c.fetchone()
         count = row and row[0] or 0
         c.execute('INSERT OR REPLACE INTO email_status VALUES (?, ?, ?, ?, ?)',
-                      (qid, date, statusid, count+1, msg))
+                  (qid, date, statusid, count+1, msg))
 
     def show_stats_1(self):
         c = self._sql.cursor()
@@ -310,7 +310,8 @@ class PostfixLog(object):
                               'WHERE qid=:qid', {'qid': qid})
                     row = c.fetchone()
                     del_date = row and localtime(row[0])
-                    c.execute('SELECT es.date, s.status, es.count FROM email_status es'
+                    c.execute('SELECT es.date, s.status, es.count '
+                              'FROM email_status es'
                               ' INNER JOIN status s ON es.statusid = s.id '
                               'WHERE qid=:qid '
                               'ORDER BY es.date', {'qid': qid})
@@ -318,10 +319,10 @@ class PostfixLog(object):
                     for row in c.fetchall():
                         status, count = row[1:3]
                         sequence.append((status, count))
-                        #if sequence and sequence[-1][0] == status:
-                        #    sequence[-1] = (status, sequence[-1][1]+1)
-                        #else:
-                        #    sequence.append((status, 1))
+                        # if sequence and sequence[-1][0] == status:
+                        #     sequence[-1] = (status, sequence[-1][1]+1)
+                        # else:
+                        #     sequence.append((status, 1))
                     seqstr = ', '.join(['%s:%d' % s for s in sequence])
                     print("%010X %s - %s (%s)" % (qid,
                           strftime("%x %X", ins_date),
@@ -358,6 +359,7 @@ class PostfixLog(object):
         AND esub.qid NOT IN (SELECT qid FROM email_removal));
 """
 
+
 def main(dbpath, year):
     pfl = PostfixLog()
     if not os.path.isfile(dbpath):
@@ -366,6 +368,7 @@ def main(dbpath, year):
         pfl.load_db(dbpath)
     pfl.parse(year, sys.stdin)
     # pfl.show_stats_2()
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:

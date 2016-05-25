@@ -2,35 +2,26 @@
 
 # Create an SQLite DB from Postfix log for further (error) analysis
 
-import os
-import re
-from sqlite3 import connect, IntegrityError
-import sys
-
+from argparse import ArgumentParser
 from email.header import decode_header
+from os import unlink
+from os.path import isfile
+from re import compile as re_compile
+from sqlite3 import connect, IntegrityError
+from sys import stdin, stdout, exit
 from time import localtime, mktime, strftime, strptime, time
-
-# Issues:
-#   Does not handle years (missing from postfix log)
 
 
 class PostfixLog(object):
     """
     """
 
-    MSGID_CRE = re.compile(r'^([0-9A-F]{10}): (.*)$')
-    INFO_CRE = re.compile(r'^([a-z][a-z\-]+)=')
-    SUBJECT_CRE = re.compile(r'^(?:(.*)\s|)from\s[^;]+;\s(.*)$')
-    HOST_CRE = re.compile(r'([\w\.\-]+)'
+    MSGID_CRE = re_compile(r'^([0-9A-F]{10}): (.*)$')
+    INFO_CRE = re_compile(r'^([a-z][a-z\-]+)=')
+    SUBJECT_CRE = re_compile(r'^(?:(.*)\s|)from\s[^;]+;\s(.*)$')
+    HOST_CRE = re_compile(r'([\w\.\-]+)'
                           r'\[(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]')
-
-    def __init__(self):
-        self._sql = None
-        self._subjects = {}
-
-    def create_db(self, dbpath):
-        self._sql = connect(dbpath)
-        sql = """
+    SQL = """
         CREATE TABLE msgid(id INTEGER PRIMARY KEY AUTOINCREMENT,
                            qid INTEGER UNIQUE);
         CREATE INDEX msgid_qid ON msgid(qid);
@@ -80,19 +71,34 @@ class PostfixLog(object):
                                    email TEXT UNIQUE);
         CREATE UNIQUE INDEX email_address_email ON email_address(email);
         """
+
+    def __init__(self):
+        self._sql = None
+        self._subjects = {}
+
+    def create_db(self, dbpath):
+        self._sql = connect(dbpath)
         c = self._sql.cursor()
-        c.executescript(sql)
+        c.executescript(self.SQL)
 
     def load_db(self, dbpath):
         self._sql = connect(dbpath)
 
     def parse(self, year, fp):
         skipped_qid = set()
+        last_month = 0
         for n, l in enumerate(fp, start=1):
             l = l.strip()
             datestr = l[:15]
             l = l[16:].lstrip(' ')
-            datetp = strptime("%d %s" % (year, datestr), "%Y %b %d %H:%M:%S")
+            while True:
+                datetp = strptime("%d %s" % (year, datestr),
+                                  "%Y %b %d %H:%M:%S")
+                if datetp.tm_mon < last_month:
+                    year += 1
+                    print("Year change %d" % year)
+                last_month = datetp.tm_mon
+                break
             date = int(mktime(datetp))
             host, process, l = l.split(' ', 2)
             if not process.startswith('postfix/'):
@@ -140,7 +146,7 @@ class PostfixLog(object):
                         continue
                     if msg.startswith('milter-reject: '):
                         continue
-                    # print('Unsupported msg: %s' % l, file=sys.stderr)
+                    # print('Unsupported msg: %s' % l, file=stderr)
                     continue
                 info = mo.group(1).replace('-', '_')
                 f = getattr(self, '_handle_%s' % info)
@@ -209,7 +215,7 @@ class PostfixLog(object):
             stored_subid = row[0]
             #if stored_subid != subid:
             #    print("Subject mismatch: %d %d" % (stored_subid, subid),
-            #          file=sys.stderr)
+            #          file=stderr)
         return subid
 
     def _create_msg_non_delivery(self, qid, date, newqid):
@@ -297,7 +303,7 @@ class PostfixLog(object):
             last_emailid = row[0]
             if last_emailid != emailid:
                 print('Sender redefined for %x: %d' % (qid, emailid),
-                      file=sys.stderr)
+                      file=stderr)
             return
         c.execute('INSERT INTO email_%s VALUES (?, ?)' % table,
                   (qid, emailid))
@@ -330,88 +336,92 @@ class PostfixLog(object):
         c.execute('INSERT OR REPLACE INTO email_status VALUES (?, ?, ?, ?, ?)',
                   (qid, date, statusid, count+1, msg))
 
-    def show_stats_1(self):
-        c = self._sql.cursor()
-        c.execute('SELECT id, text FROM subject')
-        for subid, text in c.fetchall():
-            if text.startswith('Lettre'):
-                print (subid, text)
-                c.execute('SELECT qid FROM email_subject '
-                          'WHERE subjectid=:subid', {'subid': subid})
-                for qid, in c.fetchall():
-                    c.execute('SELECT date FROM email_insertion '
-                              'WHERE qid=:qid', {'qid': qid})
-                    row = c.fetchone()
-                    ins_date = localtime(row[0])
-                    c.execute('SELECT date FROM email_removal '
-                              'WHERE qid=:qid', {'qid': qid})
-                    row = c.fetchone()
-                    del_date = row and localtime(row[0])
-                    c.execute('SELECT es.date, s.status, es.count '
-                              'FROM email_status es'
-                              ' INNER JOIN status s ON es.statusid = s.id '
-                              'WHERE qid=:qid '
-                              'ORDER BY es.date', {'qid': qid})
-                    sequence = []
-                    for row in c.fetchall():
-                        status, count = row[1:3]
-                        sequence.append((status, count))
-                        # if sequence and sequence[-1][0] == status:
-                        #     sequence[-1] = (status, sequence[-1][1]+1)
-                        # else:
-                        #     sequence.append((status, 1))
-                    seqstr = ', '.join(['%s:%d' % s for s in sequence])
-                    print("%010X %s - %s (%s)" % (qid,
-                          strftime("%x %X", ins_date),
-                          del_date and strftime("%x %X", del_date) or ' ' * 17,
-                          seqstr))
-
-    def show_stats_2(self):
-        c = self._sql.cursor()
-        c.execute('SELECT id, text FROM subject WHERE text LIKE \'Lettre%\'')
-        for subid, text in c.fetchall():
-            print(text)
-
-"""SELECT addr.email, stat.status
-   FROM email_status es
-     INNER JOIN status stat ON stat.id = es.statusid
-     INNER JOIN email_recipient rcpt ON es.qid = rcpt.qid
-     INNER JOIN email_address addr ON addr.id = rcpt.emailid
-   WHERE es.qid=0x907E7266D6;
-"""
-
-"""SELECT addr.email FROM email_insertion ins
-     INNER JOIN email_recipient rcp ON ins.qid = rcp.qid
-     INNER JOIN email_address addr ON addr.id = rcp.emailid
-     LEFT JOIN email_removal rmv ON ins.qid = rmv.qid
-   WHERE rmv.qid IS NULL;
-"""
-
-"""SELECT addr.email FROM email_address addr
-     INNER JOIN email_recipient rcp ON addr.id = rcp.emailid
-   WHERE rcp.qid IN
-     (SELECT esub.qid FROM subject sub
-        INNER JOIN email_subject esub ON esub.subjectid = sub.id
-      WHERE sub.text LIKE 'Lettre%Décembre 2015'
-        AND esub.qid NOT IN (SELECT qid FROM email_removal));
-"""
+    # def show_stats_1(self):
+    #     c = self._sql.cursor()
+    #     c.execute('SELECT id, text FROM subject')
+    #     for subid, text in c.fetchall():
+    #         if text.startswith('Lettre'):
+    #             print (subid, text)
+    #             c.execute('SELECT qid FROM email_subject '
+    #                       'WHERE subjectid=:subid', {'subid': subid})
+    #             for qid, in c.fetchall():
+    #                 c.execute('SELECT date FROM email_insertion '
+    #                           'WHERE qid=:qid', {'qid': qid})
+    #                 row = c.fetchone()
+    #                 ins_date = localtime(row[0])
+    #                 c.execute('SELECT date FROM email_removal '
+    #                           'WHERE qid=:qid', {'qid': qid})
+    #                 row = c.fetchone()
+    #                 del_date = row and localtime(row[0])
+    #                 c.execute('SELECT es.date, s.status, es.count '
+    #                           'FROM email_status es'
+    #                           ' INNER JOIN status s ON es.statusid = s.id '
+    #                           'WHERE qid=:qid '
+    #                           'ORDER BY es.date', {'qid': qid})
+    #                 sequence = []
+    #                 for row in c.fetchall():
+    #                     status, count = row[1:3]
+    #                     sequence.append((status, count))
+    #                     # if sequence and sequence[-1][0] == status:
+    #                     #     sequence[-1] = (status, sequence[-1][1]+1)
+    #                     # else:
+    #                     #     sequence.append((status, 1))
+    #                 seqstr = ', '.join(['%s:%d' % s for s in sequence])
+    #                 print("%010X %s - %s (%s)" % (qid,
+    #                       strftime("%x %X", ins_date),
+    #                       del_date and strftime("%x %X", del_date) or ' ' * 17,
+    #                       seqstr))
+    #
+    # def show_stats_2(self):
+    #     c = self._sql.cursor()
+    #     c.execute('SELECT id, text FROM subject WHERE text LIKE \'Lettre%\'')
+    #     for subid, text in c.fetchall():
+    #         print(text)
 
 
-def main(dbpath, year):
-    pfl = PostfixLog()
-    if not os.path.isfile(dbpath):
-        pfl.create_db(dbpath)
-    else:
-        pfl.load_db(dbpath)
-    pfl.parse(year, sys.stdin)
-    # pfl.show_stats_2()
+def main():
+    try:
+        debug = False
+        default_year = localtime().tm_year
+        argp = ArgumentParser(description='Store Postfix log messages into an '
+                              'SQLite DB for easy analysis')
+        argp.add_argument('-d', '--debug', action='store_true',
+                          help='Show debug information')
+        argp.add_argument('dbpath', nargs=1,
+                          help='SQLite3 database file')
+        argp.add_argument('-y', '--year', type=int, default=default_year,
+                          help='Specify year for log messages (default: %d)' %
+                                default_year)
+        argp.add_argument('-r', '--reset', action='store_true',
+                          help='Override any existing info in DB file')
+        args = argp.parse_args()
+        debug = args.debug
+
+        if not args.dbpath:
+            argp.error('Missing DB path')
+        dbpath = args.dbpath[0]
+        if args.year < 2015:
+            argp.error('Invalid year: %d' % args.year)
+        pfl = PostfixLog()
+        if not isfile(dbpath):
+            pfl.create_db(dbpath)
+        else:
+            if args.reset:
+                unlink(dbpath)
+                pfl.create_db(dbpath)
+            else:
+                pfl.load_db(dbpath)
+        pfl.parse(args.year, stdin)
+
+    except Exception as e:
+        if debug:
+            import traceback
+            traceback.print_exc()
+        else:
+            print('Error:', str(e) or 'Internal error, use -d',
+                  file=stderr)
+        exit(1)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print("Missing DB or/and year", file=sys.stderr)
-        exit(1)
-    year = int(sys.argv[2])
-    if year not in (2015, 2016):
-        raise ValueError('Invalid year: %s' % sys.argv[2])
-    main(sys.argv[1], year)
+    main()

@@ -28,7 +28,11 @@ def run(infile, outfile, debug=False):
     while dicts:
         sections = dicts.pop()
         for sectname in sections:
-            merge[sectname].update(sections[sectname])
+            section = sections[sectname]
+            if sectname == 'inherit':
+                if 'file' in section:
+                    del section['file']
+            merge[sectname].update(section)
     omerge = OrderedDict()
     for sectname in sorted(merge):
         osection = omerge[sectname] = OrderedDict()

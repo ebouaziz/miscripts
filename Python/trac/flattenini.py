@@ -19,11 +19,13 @@ def run(infile, outfile, debug=False):
         inherit = sections.get('inherit', {}).get('file', '').strip()
         if not inherit:
             break
-        if inherit.startswith(os.sep):
+        if os.path.isabs(inherit):
             inifile = inherit
         else:
             inifile = os.path.normpath(os.path.join(os.path.dirname(inifile),
                                                     inherit))
+        if debug:
+            print(inherit, '->', inifile)
     merge = defaultdict(dict)
     while dicts:
         sections = dicts.pop()

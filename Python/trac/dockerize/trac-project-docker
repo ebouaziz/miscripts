@@ -1,0 +1,30 @@
+source trac-config
+
+# Create an authentication file
+htdigest -c /local/var/trac/projects/.htdigest trac ${USER_}
+# ENTER CREDENTIAL
+
+# Duplicate SVN repository
+(mkdir -p /local/var/svn/projects && cd /local/var/svn/projects && \
+ svnadmin create ${PROJECT} && \
+ echo "#!/bin/sh" > ${PROJECT}/hooks/pre-revprop-change && \
+ chmod +x ${PROJECT}/hooks/pre-revprop-change)
+
+svnsync init  --no-auth-cache --source-username ${USER_} file:///local/var/svn/projects/${PROJECT}/ https://${SVNHOST}/${PROJECT}/
+# ENTER CREDENTIAL
+svnsync sync  --no-auth-cache --source-username ${USER_} file:///local/var/svn/projects/${PROJECT}/
+
+# Duplicate Trac environment
+ssh -y ${USER_}@${SVNHOST} "tar cf - -C /local/var/backups/export ${PROJECT}" | tar xf - -C /local/var/trac/projects
+# ENTER CREDENTIAL
+sqlite3 /local/var/trac/projects/${PROJECT}/db/trac.db "delete from system where name like 'revtree%';"
+sqlite3 /local/var/trac/projects/${PROJECT}/db/trac.db "delete from system where name like 'forms%';"
+sqlite3 /local/var/trac/projects/${PROJECT}/db/trac.db "delete from system where name like 'bitten%';"
+trac-admin /local/var/trac/projects/${PROJECT} upgrade
+trac-admin /local/var/trac/projects/${PROJECT} revtree resync
+trac-admin /local/var/trac/projects/${PROJECT} wiki upgrade
+trac-admin /local/var/trac/projects/${PROJECT} deploy /local/var/trac/resources
+chown -R apache:www-data /local/var/trac/projects/${PROJECT}
+
+# Start Apache
+/usr/sbin/apachectl start

@@ -1,0 +1,14 @@
+sudo -u www-data -s
+source trac-config
+export PYTHONPATH=/local/engine/trac:/local/engine/genshi:/local/engine/bitten:/local/var/trac/plugins
+/local/engine/trac-plugins/tracmigrate-plugin/trac-migrate.py /local/var/trac/projects/${PROJECT} ${PROJECT} sqlite:db/trac.db
+sqlite3 ${PROJECT}/db/trac.db "delete from auth_cookie";
+sqlite3 ${PROJECT}/db/trac.db "delete from session";
+sqlite3 ${PROJECT}/db/trac.db "delete from session_attribute";
+sqlite3 ${PROJECT}/db/trac.db vacuum;
+flattenini.py /local/var/trac/projects/${PROJECT}/conf/trac.ini ${PROJECT}/conf/trac.ini
+sed -i "s/${PROJECTHOST}/docker:8000/g" ${PROJECT}/conf/trac.ini
+sed -i 's^/local/engine/trac/neo/web/common/templates^/local/var/trac/templates^g' ${PROJECT}/conf/trac.ini
+sed -i 's^postgres://.*$^sqlite:db/trac.db^g' ${PROJECT}/conf/trac.ini
+sed -i 's^/local/var/trac/templates^/local/engine/trac/neo/web/common/templates^g' ${PROJECT}/conf/trac.ini
+chmod -R a+r ${PROJECT}

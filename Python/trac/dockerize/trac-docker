@@ -1,0 +1,169 @@
+source trac-config
+
+# Update Alpine package list
+apk update
+
+# Install required packages
+apk add apache2 apache2-mod-wsgi apache2-utils busybox curl openssh-client git libbz2 libjpeg-turbo mod_dav_svn musl musl-utils openrc pcre py-pip py-setuptools py-virtualenv python ruby py-subversion sqlite subversion subversion-libs vim xz zlib
+
+# Configure VIM
+(cd /root && git clone https://github.com/eblot/dotvim.git .vim && ln -s .vim/vimrc .vimrc)
+
+# Configure Apache
+sed -i 's/Group apache/Group www-data/g' /etc/apache2/httpd.conf
+sed -i 's/Listen 80/Listen 8000/g' /etc/apache2/httpd.conf
+sed -i 's/#ServerName www.example.com:80/ServerName trac:8000/g' /etc/apache2/httpd.conf
+sed -i 's/ServerAdmin you@example.com/ServerAdmin webmaster@localhost/g' /etc/apache2/httpd.conf
+sed -i 's/#LoadModule auth_digest_module/LoadModule auth_digest_module/g' /etc/apache2/httpd.conf
+cat >> /etc/apache2/httpd.conf <<EOT
+
+WSGIPythonOptimize 0
+WSGIScriptAlias /trac /local/var/trac/wsgi/trac.wsgi
+
+<Directory /local/var/trac/wsgi>
+    WSGIApplicationGroup %{GLOBAL}
+    # For Apache 2.4
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</Directory>
+
+<Directory "/local/var/trac/resources/htdocs">
+    Options MultiViews FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+
+<IfModule mod_alias.c>
+    AliasMatch /trac/(?:[\w]+/)?chrome/(.*) "/local/var/trac/resources/htdocs/\$1"
+</IfModule>
+
+<LocationMatch "/trac/[^/]+/login">
+  AuthType Digest
+  AuthName "trac"
+  AuthDigestDomain "/trac"
+  AuthDigestProvider file
+  AuthUserFile /local/var/trac/projects/.htdigest
+  Require valid-user
+</LocationMatch>
+
+EOT
+
+mkdir -p /root/.ssh
+cat > /root/.ssh/id_rsa_automator <<EOT
+-----BEGIN RSA PRIVATE KEY-----
+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
+-----END RSA PRIVATE KEY-----
+EOT
+chmod 600 /root/.ssh/id_rsa_automator
+
+cat > /root/.ssh/config <<EOT
+Host ${GITHOST}
+    user automator
+    hostname ${GITHOST}
+    port 22
+    identityfile /root/.ssh/id_rsa_automator
+
+EOT
+
+# Install Trac
+export GIT_SSL_NO_VERIFY=true
+mkdir -p /local/engine /local/var/trac/eggs /local/var/trac/wsgi /local/var/trac/plugins /local/var/trac/projects
+pip install -U pip
+pip install genshi
+(apk add gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev && \
+  pip install bpython && pip install pycrypto && (LDFLAGS=-L/lib pip install pillow) && \
+  apk del gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev)
+#(cd /local/engine && svn co https://svn.edgewall.org/repos/trac/trunk trac && cd trac && python setup.py develop --no-deps)
+gem install sass --no-rdoc --no-document
+(cd /local/engine && git clone  --recursive  git@${GITHOST}:trac && cd trac && \
+ git checkout -b ${GITBRANCH} remotes/origin/${GITBRANCH} && python setup.py develop --no-deps)
+
+# Install Trac plugins
+cd /local/engine
+git clone  --recursive  git@${GITHOST}:trac-plugins
+export PYTHONPATH=/local/engine/trac:/local/var/trac/plugins
+cd trac-plugins
+for d in *; do if [ -d $d ]; then (cd $d && python setup.py develop --no-deps --install-dir /local/var/trac/plugins); fi; done
+
+cat > /local/var/trac/wsgi/trac.wsgi <<EOT
+#!/usr/bin/env python
+
+import os
+import site
+
+site.addsitedir('/local/engine/trac')
+
+os.environ['TRAC_ENV_PARENT_DIR'] = '/local/var/trac/projects'
+os.environ['LC_ALL'] = 'en_GB.UTF-8'
+
+def application(environ, start_request):
+    environ['trac.env_path_parent_dir'] = '/local/var/trac/projects'
+    environ['PYTHON_EGG_CACHE'] = '/local/var/trac/eggs'
+
+    if not 'trac.env_path_parent_dir' in environ:
+        environ.setdefault('trac.env_path', '\${env.path}')
+    if 'PYTHON_EGG_CACHE' in environ:
+        os.environ['PYTHON_EGG_CACHE'] = environ['PYTHON_EGG_CACHE']
+    elif 'trac.env_path' in environ:
+        os.environ['PYTHON_EGG_CACHE'] = os.path.join(environ['trac.env_path'],
+                                                      '.egg-cache')
+    elif 'trac.env_path_parent_dir' in environ:
+        os.environ['PYTHON_EGG_CACHE'] = os.path.join(environ['trac.env_path_parent_dir'],
+                                                      '.egg-cache')
+    from trac.web.main import dispatch_request
+    return dispatch_request(environ, start_request)
+EOT
+chmod +x /local/var/trac/wsgi/trac.wsgi
+
+mkdir -p /run/apache2
+
+### IMAGE COMMIT

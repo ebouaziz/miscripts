@@ -1,0 +1,7 @@
+# Configure the following env. var.
+export USER_=
+export PROJECT=
+export GITBRANCH=
+export GITHOST=
+export SVNHOST=
+export PROJECTHOST=

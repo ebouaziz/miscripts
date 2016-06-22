@@ -1,4 +1,4 @@
-source trac-config
+# source trac-config
 
 # Update Alpine package list
 apk update
@@ -51,10 +51,12 @@ EOT
 
 cat > /root/.ssh/config <<EOT
 Host ${GITHOST}
-    user automator
-    hostname ${GITHOST}
-    port 22
-    identityfile /root/.ssh/id_rsa_automator
+    User automator
+    Hostname ${GITHOST}
+    Port 22
+    Identityfile /root/.ssh/id_rsa_automator
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
 
 EOT
 
@@ -68,12 +70,12 @@ pip install genshi
   apk del gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev)
 #(cd /local/engine && svn co https://svn.edgewall.org/repos/trac/trunk trac && cd trac && python setup.py develop --no-deps)
 gem install sass --no-rdoc --no-document
-(cd /local/engine && git clone  --recursive  git@${GITHOST}:trac && cd trac && \
+(cd /local/engine && git clone --recursive git@${GITHOST}:trac && cd trac && \
  git checkout -b ${GITBRANCH} remotes/origin/${GITBRANCH} && python setup.py develop --no-deps)
 
 # Install Trac plugins
 cd /local/engine
-git clone  --recursive  git@${GITHOST}:trac-plugins
+git clone --recursive git@${GITHOST}:trac-plugins
 export PYTHONPATH=/local/engine/trac:/local/var/trac/plugins
 cd trac-plugins
 for d in *; do if [ -d $d ]; then (cd $d && python setup.py develop --no-deps --install-dir /local/var/trac/plugins); fi; done

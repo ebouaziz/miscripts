@@ -5,3 +5,12 @@ export GITBRANCH=
 export GITHOST=
 export SVNHOST=
 export PROJECTHOST=
+
+if [ ! -f /root/.ssh/id_rsa_automator ]; then
+mkdir -p /root/.ssh
+cat > /root/.ssh/id_rsa_automator <<EOT
+-----BEGIN RSA PRIVATE KEY-----
+-----END RSA PRIVATE KEY-----
+EOT
+chmod 600 /root/.ssh/id_rsa_automator
+fi

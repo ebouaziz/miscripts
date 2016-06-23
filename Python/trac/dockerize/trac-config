@@ -1,7 +1,8 @@
 # Configure the following env. var.
 export USER_=
 export PROJECT=
-export GITBRANCH=
+export GITTRACBRANCH=
+export GITPLUGINBRANCH=
 export GITHOST=
 export SVNHOST=
 export PROJECTHOST=

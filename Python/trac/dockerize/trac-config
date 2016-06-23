@@ -5,6 +5,8 @@ export GITTRACBRANCH=
 export GITPLUGINBRANCH=
 export GITHOST=
 export SVNHOST=
+export GITPATH=
+export GITUSER=
 export PROJECTHOST=
 
 if [ ! -f /root/.ssh/id_rsa_automator ]; then

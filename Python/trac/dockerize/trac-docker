@@ -49,6 +49,7 @@ WSGIScriptAlias /trac /local/var/trac/wsgi/trac.wsgi
 
 EOT
 
+if [ ! -f "/root/.ssh/config" ]; then
 cat > /root/.ssh/config <<EOT
 Host ${GITHOST}
     User automator
@@ -57,31 +58,52 @@ Host ${GITHOST}
     Identityfile /root/.ssh/id_rsa_automator
 
 EOT
+fi
 
-ssh-keyscan -t rsa git.neotion.pro 2>&1 > /root/.ssh/known_hosts
+if [ ! -f "/root/.ssh/known_hosts" ]; then
+  ssh-keyscan -t rsa git.neotion.pro 2>&1 > /root/.ssh/known_hosts
+fi
 
 # Install Trac
 export GIT_SSL_NO_VERIFY=true
 mkdir -p /local/engine /local/var/trac/eggs /local/var/trac/wsgi /local/var/trac/plugins /local/var/trac/projects
 pip install -U pip
 pip install genshi
-(apk add gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev && \
-  pip install bpython && pip install pycrypto && (LDFLAGS=-L/lib pip install pillow) && \
-  apk del gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev)
-#(cd /local/engine && svn co https://svn.edgewall.org/repos/trac/trunk trac && cd trac && python setup.py develop --no-deps)
-gem install sass --no-rdoc --no-document
-(cd /local/engine && git clone --recursive git@${GITHOST}:trac && cd trac && \
- git checkout -b ${GITTRACBRANCH} remotes/origin/${GITTRACBRANCH} && python setup.py develop --no-deps)
-
-# Install Trac plugins
-cd /local/engine
-(git clone git@${GITHOST}:trac-plugins && \
- cd trac-plugins && \
- git checkout -b ${GITPLUGINBRANCH} remotes/origin/${GITPLUGINBRANCH} && \
- git submodule init && git submodule update)
-export PYTHONPATH=/local/engine/trac:/local/var/trac/plugins
-cd trac-plugins
-for d in *; do if [ -d $d ]; then (cd $d && python setup.py develop --no-deps --install-dir /local/var/trac/plugins); fi; done
+if [ -n "${GITPLUGINBRANCH}" ]; then
+  (apk add gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev && \
+    pip install bpython && pip install pycrypto && \
+    (LDFLAGS=-L/lib pip install pillow) && \
+    apk del gcc musl-dev python-dev libjpeg-turbo-dev zlib-dev)
+fi
+if [ -z "${GITTRACBRANCH}" ]; then
+  (cd /local/engine && svn co https://svn.edgewall.org/repos/trac/trunk trac && \
+   cd trac && python setup.py develop --no-deps)
+else
+  gem install sass --no-rdoc --no-document
+  (cd /local/engine && git clone --recursive ${GITUSER}@${GITHOST}:${GITPATH}trac && \
+   cd trac && \
+   (if [ "master" != "${GITTRACBRANCH}" ]; then
+      git checkout -b ${GITTRACBRANCH} remotes/origin/${GITTRACBRANCH}
+    fi) && \
+   python setup.py develop --no-deps)
+fi
+if [ -n "${GITPLUGINBRANCH}" ]; then
+  # Install Trac plugins
+  cd /local/engine
+  (git clone ${GITUSER}@${GITHOST}:${GITPATH}trac-plugins && \
+   cd trac-plugins && \
+   (if [ "master" != "${GITPLUGINBRANCH}" ]; then
+      git checkout -b ${GITPLUGINBRANCH} remotes/origin/${GITPLUGINBRANCH}
+    fi ) && \
+   git submodule init && git submodule update)
+  export PYTHONPATH=/local/engine/trac:/local/var/trac/plugins
+  cd trac-plugins
+  for d in *; do
+    if [ -d $d ]; then
+      (cd $d && python setup.py develop --no-deps --install-dir /local/var/trac/plugins)
+    fi
+  done
+fi
 
 cat > /local/var/trac/wsgi/trac.wsgi <<EOT
 #!/usr/bin/env python

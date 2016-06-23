@@ -135,6 +135,7 @@ def application(environ, start_request):
 EOT
 chmod +x /local/var/trac/wsgi/trac.wsgi
 
+cd /
 mkdir -p /run/apache2
 
 ### IMAGE COMMIT

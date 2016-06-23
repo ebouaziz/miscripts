@@ -12,3 +12,4 @@ sed -i 's^/local/engine/trac/neo/web/common/templates^/local/var/trac/templates^
 sed -i 's^postgres://.*$^sqlite:db/trac.db^g' ${PROJECT}/conf/trac.ini
 sed -i 's^/local/var/trac/templates^/local/engine/trac/neo/web/common/templates^g' ${PROJECT}/conf/trac.ini
 chmod -R a+r ${PROJECT}
+htdigest -c htdigest trac ${USER_}

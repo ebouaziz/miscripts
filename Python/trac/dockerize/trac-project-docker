@@ -1,4 +1,4 @@
-source trac-config
+# source trac-config
 
 # Create an authentication file
 htdigest -c /local/var/trac/projects/.htdigest trac ${USER_}
@@ -7,7 +7,7 @@ htdigest -c /local/var/trac/projects/.htdigest trac ${USER_}
 # Duplicate SVN repository
 (mkdir -p /local/var/svn/projects && cd /local/var/svn/projects && \
  svnadmin create ${PROJECT} && \
- echo "#!/bin/sh" > ${PROJECT}/hooks/pre-revprop-change && \
+ echo '#!/bin/sh' > ${PROJECT}/hooks/pre-revprop-change && \
  chmod +x ${PROJECT}/hooks/pre-revprop-change)
 
 svnsync init  --no-auth-cache --source-username ${USER_} file:///local/var/svn/projects/${PROJECT}/ https://${SVNHOST}/${PROJECT}/
@@ -15,7 +15,7 @@ svnsync init  --no-auth-cache --source-username ${USER_} file:///local/var/svn/p
 svnsync sync  --no-auth-cache --source-username ${USER_} file:///local/var/svn/projects/${PROJECT}/
 
 # Duplicate Trac environment
-ssh -y ${USER_}@${SVNHOST} "tar cf - -C /local/var/backups/export ${PROJECT}" | tar xf - -C /local/var/trac/projects
+ssh ${USER_}@${SVNHOST} "tar cf - -C /local/var/backups/export ${PROJECT}" | tar xf - -C /local/var/trac/projects
 # ENTER CREDENTIAL
 sqlite3 /local/var/trac/projects/${PROJECT}/db/trac.db "delete from system where name like 'revtree%';"
 sqlite3 /local/var/trac/projects/${PROJECT}/db/trac.db "delete from system where name like 'forms%';"

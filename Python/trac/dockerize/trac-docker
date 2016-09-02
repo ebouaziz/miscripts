@@ -80,10 +80,10 @@ if [ -z "${GITTRACBRANCH}" ]; then
    cd trac && python setup.py develop --no-deps)
 else
   gem install sass --no-rdoc --no-document
-  (cd /local/engine && git clone --recursive ${GITUSER}@${GITHOST}:${GITPATH}trac && \
+  (cd /local/engine && git clone ${GITUSER}@${GITHOST}:${GITPATH}trac && \
    cd trac && \
    (if [ "master" != "${GITTRACBRANCH}" ]; then
-      git checkout -b ${GITTRACBRANCH} remotes/origin/${GITTRACBRANCH}
+      git checkout -b ${GITTRACBRANCH} remotes/origin/${GITTRACBRANCH};
     fi) && \
    python setup.py develop --no-deps)
 fi
@@ -93,7 +93,7 @@ if [ -n "${GITPLUGINBRANCH}" ]; then
   (git clone ${GITUSER}@${GITHOST}:${GITPATH}trac-plugins && \
    cd trac-plugins && \
    (if [ "master" != "${GITPLUGINBRANCH}" ]; then
-      git checkout -b ${GITPLUGINBRANCH} remotes/origin/${GITPLUGINBRANCH}
+      git checkout -b ${GITPLUGINBRANCH} remotes/origin/${GITPLUGINBRANCH};
     fi ) && \
    git submodule init && git submodule update)
   export PYTHONPATH=/local/engine/trac:/local/var/trac/plugins

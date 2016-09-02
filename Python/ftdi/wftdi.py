@@ -24,11 +24,15 @@ class Root(object):
     PINS = 8
 
     def __init__(self):
-        self.env = Environment(loader=FileSystemLoader(os.path.dirname(__file__)))
+        ldir = os.path.dirname(__file__)
+        self.env = Environment(loader=FileSystemLoader(ldir))
         self._output = 0
+        self._bailout = False
 
     @cherrypy.expose
     def index(self, k='', v=''):
+        if self._bailout:
+            sys.exit(0)
         checked = v == 'true'
         if k.startswith(self.PREFIX):
             ix = int(k.split('_', 1)[1])
@@ -37,7 +41,8 @@ class Root(object):
             else:
                 self._output &= ~(1 << ix)
         elif k == 'restart':
-            sys.exit(0)
+            self._bailout = True
+            raise cherrypy.HTTPRedirect("/")
         # print('%08x' % self._output)
         try:
             self._connect()

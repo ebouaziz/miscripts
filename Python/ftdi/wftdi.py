@@ -42,8 +42,6 @@ class Root(object):
             self._bailout = True
             raise cherrypy.HTTPRedirect("/")
 
-        print("FTDI", self._ftdis)
-
         if k:
             self._antennas[k] = int(v)
             ant = int(k.split('_')[0].replace(self.PREFIX, ''))
@@ -52,8 +50,6 @@ class Root(object):
                 self._connect()
                 self._ftdis[ant].write_port(self._antennas[k])
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 cherrypy.log('FTDI Error: %s (%d MHz)' % (str(e), ant))
                 self._ftdis[ant] = False
 
@@ -67,8 +63,8 @@ class Root(object):
             antenna['status'] = bool(self._ftdis[band])
             antenna['sel'] = self._antennas[antname]
 
-        from pprint import pprint
-        pprint(kwargs)
+        #from pprint import pprint
+        #pprint(kwargs)
         tmpl = self.env.get_template('index.html')
         return tmpl.render(**kwargs)
 
@@ -86,7 +82,6 @@ class Root(object):
                 else:
                     gpio = None
                 self._ftdis[ant] = gpio
-                print('New', self._ftdis)
             except Exception as e:
                 self._ftdis[ant] = False
                 cherrypy.log('FTDI Error: %s (%s)' % (str(e), serial))

@@ -8,10 +8,9 @@
   <body>
     <script type="text/javascript">
       $(document).ready(function () {
-        $('input:checkbox').change(function () {
+        $('select').change(function () {
           var $this = $(this);
-          var checked = $this.prop('checked');
-          window.location = "?k=" + $this.attr("name") + '&v=' + $this.prop('checked');
+          window.location = "?k=" + $this.attr("name") + '&v=' + $this.val();
         });
         $('input:button').click(function () {
           var $this = $(this);
@@ -22,6 +21,9 @@
     <style type="text/css">
     body {
       font-family: arial;
+    }
+    h1 {
+      margin-left: 1em;
     }
     table {
       border: 1px solid grey;
@@ -44,37 +46,49 @@
     div#emergency {
       text-align: center;
     }
-    div.error {
+    span.error {
       margin-top: 2em;
-      margin-left: 3em;
       color: red;
       font-weight: bold;
+      font-size: small;
     }
     input.button {
     }
     </style>
-    <h1>FTDI GPIO selector</h1>
+    <h1>Antenna selector</h1>
     <div id="main">
       <form id="update">
         <table>
-          <tr><th>Name</th><th>Status</th></tr>
-          {% for name in gpios %}
-            <tr>
-              <td>{{name.replace('_', ' ')}}</td>
-              <td><input type="checkbox" name="{{name}}" value="" {{gpios[name]}}/></td>
-            </tr>
-          {%endfor %}
+          <tr>
+            {% for antname in antennas %}
+            <th>{{antennas[antname].band}} MHz</th>
+            {% endfor %}
+          <tr>
+            {% for antname in antennas %}
+            <td>
+              <select name="{{antname}}">
+                {% for ant in antennas[antname].count %}
+                  <option value="{{ant}}"{%
+                    if antennas[antname].sel == ant
+                      %}selected="selected"{%
+                      endif %}>Antenna {{ant + 1}}</option>
+                {%endfor %}
+              </select>
+            {% endfor %}
+            </td>
+          </tr>
+          <tr>
+            {% for antname in antennas %}
+            <td>{% if not antennas[antname].status %}
+              <span class="error">No FTDI device</span>
+                {% endif %}</td>
+            {% endfor %}
+          </tr>
         </table>
-
-        <div id="emergency">
+       <div id="emergency">
           <div><input type="button" name="restart" value="restart"/></div>
         </div>
-
       </form>
-
-      {% if not ftdi %}
-      <div class="error"><span>FTDI device not reachable.</span></div>
-      {% endif %}
     </div>
   </body>
 </html>

@@ -1,0 +1,80 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-15">
+    <title>FTDI GPIO selector</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  </head>
+  <body>
+    <script type="text/javascript">
+      $(document).ready(function () {
+        $('input:checkbox').change(function () {
+          var $this = $(this);
+          var checked = $this.prop('checked');
+          window.location = "?k=" + $this.attr("name") + '&v=' + $this.prop('checked');
+        });
+        $('input:button').click(function () {
+          var $this = $(this);
+          window.location = "?k=" + $this.attr("name") + '&v=true';
+        });
+      });
+    </script>
+    <style type="text/css">
+    body {
+      font-family: arial;
+    }
+    table {
+      border: 1px solid grey;
+      border-radius: 5px;
+      margin: 2em auto;
+    }
+    tr {
+      padding: 5px;
+    }
+    tr:nth-child(1) th {
+      padding-bottom: 1.3em;
+    }
+    td {
+      padding: 5px;
+      text-align: center;
+    }
+    div#main {
+      width: 40ex;
+    }
+    div#emergency {
+      text-align: center;
+    }
+    div.error {
+      margin-top: 2em;
+      margin-left: 3em;
+      color: red;
+      font-weight: bold;
+    }
+    input.button {
+    }
+    </style>
+    <h1>FTDI GPIO selector</h1>
+    <div id="main">
+      <form id="update">
+        <table>
+          <tr><th>Name</th><th>Status</th></tr>
+          {% for name in gpios %}
+            <tr>
+              <td>{{name.replace('_', ' ')}}</td>
+              <td><input type="checkbox" name="{{name}}" value="" {{gpios[name]}}/></td>
+            </tr>
+          {%endfor %}
+        </table>
+
+        <div id="emergency">
+          <div><input type="button" name="restart" value="restart"/></div>
+        </div>
+
+      </form>
+
+      {% if not ftdi %}
+      <div class="error"><span>FTDI device not reachable.</span></div>
+      {% endif %}
+    </div>
+  </body>
+</html>

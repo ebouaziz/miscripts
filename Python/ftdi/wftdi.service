@@ -5,9 +5,11 @@
 
   <name replace-wildcards="yes">%h</name>
 
-  <service>
-    <type>_wftdid._tcp</type>
+  <service protocol="ipv4">
+    <type>_http._tcp</type>
+    <subtype>_wftdi._sub._http._tcp</subtype>
     <port>8080</port>
+    <txt-record>web ftdi service</txt-record>
   </service>
 
 </service-group>

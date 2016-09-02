@@ -24,8 +24,7 @@ class Root(object):
     PINS = 8
 
     def __init__(self):
-        self.env = Environment(loader=FileSystemLoader('.'))
-
+        self.env = Environment(loader=FileSystemLoader(os.path.dirname(__file__)))
         self._output = 0
 
     @cherrypy.expose

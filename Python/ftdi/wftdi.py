@@ -17,7 +17,8 @@ import sys
 from argparse import ArgumentParser
 from collections import OrderedDict
 from jinja2 import Environment, FileSystemLoader
-from pyftdi.gpio import GpioController, GpioException
+from pyftdi.gpio import GpioController
+from pyftdi.usbtools import UsbTools
 
 
 class Root(object):
@@ -82,6 +83,7 @@ class Root(object):
             except Exception as e:
                 self._ftdis[ant] = None
                 cherrypy.log('FTDI Error: %s (%s)' % (str(e), serial))
+                UsbTools.flush_cache()
 
 
 def main():

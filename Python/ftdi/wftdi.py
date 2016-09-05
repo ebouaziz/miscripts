@@ -69,21 +69,18 @@ class Root(object):
         return tmpl.render(**kwargs)
 
     def _connect(self):
-        for ant in self.ANTENNAS:
+        for port, ant in enumerate(sorted(self.ANTENNAS), start=1):
             if self._ftdis[ant]:
                 continue
             try:
                 serial = os.environ.get('FTDI%d' % ant, None)
-                if serial:
-                    gpio = GpioController()
-                    gpio.open(vendor=0x403, product=0x6014, interface=1,
-                              serial=serial, direction=0xFF)
-                    gpio.read_port()
-                else:
-                    gpio = None
+                gpio = GpioController()
+                gpio.open(vendor=0x403, product=0x6010, interface=port,
+                          serial=serial, direction=0xFF)
+                gpio.read_port()
                 self._ftdis[ant] = gpio
             except Exception as e:
-                self._ftdis[ant] = False
+                self._ftdis[ant] = None
                 cherrypy.log('FTDI Error: %s (%s)' % (str(e), serial))
 
 

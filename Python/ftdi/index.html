@@ -67,11 +67,21 @@
             {% for antname in antennas %}
             <td>
               <select name="{{antname}}">
-                {% for ant in antennas[antname].count %}
-                  <option value="{{ant}}"{%
-                    if antennas[antname].sel == ant
-                      %}selected="selected"{%
-                      endif %}>Antenna {{ant + 1}}</option>
+                {% for ant in antennas[antname].ids %}
+                {% set group = antennas[antname].group %}
+                {% set main = ant // group + 1 %}
+                {% set sub = ant % group + 1 %}
+                {% set count = antennas[antname].count %}
+                {% if (count > group) and (ant % group == 0)  %}
+                  <optgroup label="Group {{main}}">
+                {% endif %}
+                    <option value="{{ant}}"{%
+                      if antennas[antname].sel == ant
+                        %}selected="selected"{%
+                        endif %}>Antenna {{sub}}</option>
+                 {% if (count > group) and (ant % group == 3)  %}
+                  </optgroup>
+                {% endif %}
                 {%endfor %}
               </select>
             {% endfor %}

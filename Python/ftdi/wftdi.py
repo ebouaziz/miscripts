@@ -60,7 +60,9 @@ class Root(object):
             antname = '%s%d' % (self.PREFIX, band)
             antenna = kwargs['antennas'][antname] = {}
             antenna['band'] = band
-            antenna['count'] = list(range(count))
+            antenna['ids'] = list(range(count))
+            antenna['count'] = count
+            antenna['group'] = 4
             antenna['status'] = bool(self._ftdis[band])
             antenna['sel'] = self._antennas[antname]
 

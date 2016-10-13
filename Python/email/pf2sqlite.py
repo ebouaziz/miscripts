@@ -8,7 +8,7 @@ from os import unlink
 from os.path import isfile
 from re import compile as re_compile
 from sqlite3 import connect, IntegrityError
-from sys import stdin, stdout, exit
+from sys import stdin, stdout, stderr, exit
 from time import localtime, mktime, strftime, strptime, time
 
 
@@ -20,7 +20,7 @@ class PostfixLog(object):
     INFO_CRE = re_compile(r'^([a-z][a-z\-]+)=')
     SUBJECT_CRE = re_compile(r'^(?:(.*)\s|)from\s[^;]+;\s(.*)$')
     HOST_CRE = re_compile(r'([\w\.\-]+)'
-                          r'\[(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]')
+                          r'\[((?:(?:[0-9a-f]{0,4}:?){1,8}|([0-9]{1,3}\.){3}[0-9]{1,3}))\]')
     SQL = """
         CREATE TABLE msgid(id INTEGER PRIMARY KEY AUTOINCREMENT,
                            qid INTEGER UNIQUE);

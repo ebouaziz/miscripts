@@ -81,7 +81,7 @@ SELECT sub.text, datetime(est.date, 'unixepoch'), addr.email, est.msg
     AND snd.emailid = (SELECT address.id
                        FROM email_address address
                        WHERE address.email='ffplum@ml.ffplum.info')
-    AND datetime(est.date, 'unixepoch') >= date('2016-04-13');
+    AND datetime(est.date, 'unixepoch') >= date('2016-09-10');
 
 -- SELECT raddr.email
 --   FROM email_address raddr

@@ -75,6 +75,11 @@ class Root(object):
         self._timers[ant] = timer
         timer.start()
 
+    @cherrypy.expose
+    def status(self):
+        return not all([bool(self._ftdis[band]) for band in self.ANTENNAS]) \
+            and 'No FTDI device' or 'Ok'
+
     def _stop_autoswitch(self, ant):
         if ant in self._timers:
             self._timers[ant].cancel()
@@ -107,7 +112,6 @@ class Root(object):
             antenna['ids'] = list(range(count))
             antenna['count'] = count
             antenna['group'] = 4
-            antenna['status'] = bool(self._ftdis[band])
             antenna['sel'] = self._antennas[band]
             antenna['delay'] = self._delays[band]
 

@@ -21,9 +21,11 @@
         $(".antselect").each(function() {
           update_delays($(this));
         });
-        //setInterval(function() {
-        //  $('.Timer').text((new Date - start) / 1000 + " Seconds");
-        //}, 1000);
+        setInterval(function() {
+          $.get("status", function(data) {
+            $("#status").html(data);
+          });
+        }, 1000);
         $("select").change(function () {
           var $this = $(this);
           update_delays($this);
@@ -143,9 +145,7 @@
             {% endfor %}
           </tr>
           <tr>
-            {% for antname in antennas %}
-            <td><span class="error"></span></td>
-            {% endfor %}
+            <td colspan="2"><span class="error" id="status"></span></td>
           </tr>
         </table>
       </form>

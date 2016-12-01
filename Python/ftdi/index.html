@@ -7,19 +7,33 @@
   </head>
   <body>
     <script type="text/javascript">
+      var update_delays = function(select) {
+        var auto = "."+select.attr("name")+"_auto";
+        if ( select.val() === 'auto' ) {
+          $(auto).css("visibility", "visible");
+          delay = '#'+select.attr("name").replace('ant', 'delay');
+          $.post("autoswitch", { k: select.attr("name"), v:$(delay).val() } );
+        } else {
+          $(auto).css("visibility", "hidden");
+        }
+      }
       $(document).ready(function () {
-        $('select').change(function () {
-          var $this = $(this);
-          if ( $this.val() === 'auto' ) {
-            var auto = "."+$this.attr("name")+"_auto";
-            // alert(auto);
-            $(auto).css("visibility", "visible");
-          } else {
-            $($this.attr("name")+"_auto").css("visibility", "hidden");
-            window.location = "?k=" + $this.attr("name") + '&v=' + $this.val();
-          }
+        $(".antselect").each(function() {
+          update_delays($(this));
         });
-        $('input:button').click(function () {
+        //setInterval(function() {
+        //  $('.Timer').text((new Date - start) / 1000 + " Seconds");
+        //}, 1000);
+        $("select").change(function () {
+          var $this = $(this);
+          update_delays($this);
+          $.post("select", { k: $this.attr("name"), v:$this.val() } );
+        });
+        $("input[type='number']").change(function() {
+          var $this = $(this);
+          $.post("autoswitch", { k: $this.attr("name"), v:$this.val() } );
+        });
+        $("input:button").click(function () {
           var $this = $(this);
           window.location = "?k=" + $this.attr("name") + '&v=true';
         });
@@ -87,7 +101,7 @@
           <tr>
             {% for antname in antennas %}
             <td>
-              <select name="{{antname}}">
+              <select name="{{antname}}" class="antselect">
                     <option value="auto"{%
                       if antennas[antname].sel == ant
                         %}selected="selected"{%
@@ -121,21 +135,24 @@
           <tr>
             {% for antname in antennas %}
             {% set band = antennas[antname].band %}
-            <td class="{{antname}}_auto" range"><input type="number"
-                min="100" max="10000" name="delay_{{band}}"/>
+            {% set delay = antennas[antname].delay %}
+            <td class="{{antname}}_auto"><input type="number"
+                min="100" max="10000" step="100" name="delay_{{band}}"
+                id="delay_{{band}}" value="{{delay}}"/>
                 <span class="delay">ms</span></td>
             {% endfor %}
           </tr>
           <tr>
             {% for antname in antennas %}
-            <td>{% if not antennas[antname].status %}
-              <span class="error">No FTDI device</span>
-                {% endif %}</td>
+            <td><span class="error"></span></td>
             {% endfor %}
           </tr>
         </table>
-       <div id="emergency">
-          <div><input type="button" name="restart" value="restart"/></div>
+      </form>
+      <form id="load">
+        <div id="emergency">
+          <input type="button" name="reload" value="reload"/>
+          <input type="button" name="restart" value="restart"/>
         </div>
       </form>
     </div>

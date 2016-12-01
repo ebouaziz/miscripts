@@ -19,21 +19,25 @@ from collections import OrderedDict
 from jinja2 import Environment, FileSystemLoader
 from pyftdi.gpio import GpioController
 from pyftdi.usbtools import UsbTools
+from threading import Timer
 
 
 class Root(object):
 
     PREFIX = 'ant'
-    ANTENNAS = {900: (4,),
-                2450: (16,)}
+    ANTENNAS = {
+        900: (4, 500),
+        2450: (16, 500)
+    }
 
     def __init__(self):
         ldir = os.path.dirname(__file__)
         self.env = Environment(loader=FileSystemLoader(ldir))
-        self._antennas = {'%s%d' % (self.PREFIX, k): 1
-                          for k in self.ANTENNAS}
-        self._bailout = False
+        self._antennas = {k: 1 for k in self.ANTENNAS}
+        self._delays = {k: self.ANTENNAS[k][1] for k in self.ANTENNAS}
         self._ftdis = {k: None for k in self.ANTENNAS}
+        self._bailout = False
+        self._timers = {}
 
     @cherrypy.expose
     def index(self, k='', v=''):
@@ -42,29 +46,70 @@ class Root(object):
         if k == 'restart':
             self._bailout = True
             raise cherrypy.HTTPRedirect("/")
+        for ant in self._timers:
+            self._timers[ant].cancel()
+        self._timers = {}
+        return self._generate()
 
+    @cherrypy.expose
+    def select(self, k='', v=''):
+        if v == 'auto':
+            return
         if k:
-            self._antennas[k] = int(v)
-            ant = int(k.split('_')[0].replace(self.PREFIX, ''))
+            ant = int(k.split('_')[-1])
+            self._stop_autoswitch(ant)
+            value = int(v)
+            self._antennas[ant] = value
+            self._update_antenna(ant)
 
+    @cherrypy.expose
+    def autoswitch(self, k='', v=''):
+        ant = int(k.split('_')[-1])
+        if ant in self._timers:
+            self._timers[ant].cancel()
+            del self._timers[ant]
+        delay = int(v)
+        self._delays[ant] = delay
+        interval = float(int(v)/1000.0)
+        timer = Timer(interval, self._switch_antenna, args=(ant, interval))
+        self._timers[ant] = timer
+        timer.start()
+
+    def _stop_autoswitch(self, ant):
+        if ant in self._timers:
+            self._timers[ant].cancel()
+            del self._timers[ant]
+
+    def _switch_antenna(self, ant, interval):
+        self._antennas[ant] = (self._antennas[ant] + 1) % self.ANTENNAS[ant][0]
+        print('Switch antenna %s to %d' % (ant, self._antennas[ant]))
+        timer = Timer(interval, self._switch_antenna, args=(ant, interval))
+        self._timers[ant] = timer
+        timer.start()
+
+    def _update_antenna(self, ant):
+            value = self._antennas[ant]
+            print('Update ant: %d, value %d' % (ant, value))
             try:
                 self._connect()
-                self._ftdis[ant].write_port(self._antennas[k])
+                self._ftdis[ant].write_port(self._antennas[ant])
             except Exception as e:
                 cherrypy.log('FTDI Error: %s (%d MHz)' % (str(e), ant))
                 self._ftdis[ant] = False
 
+    def _generate(self):
         kwargs = {'antennas': OrderedDict()}
         for band in reversed(sorted(list(self.ANTENNAS))):
-            count, = self.ANTENNAS[band]
-            antname = '%s%d' % (self.PREFIX, band)
+            count = self.ANTENNAS[band][0]
+            antname = '%s_%d' % (self.PREFIX, band)
             antenna = kwargs['antennas'][antname] = {}
             antenna['band'] = band
             antenna['ids'] = list(range(count))
             antenna['count'] = count
             antenna['group'] = 4
             antenna['status'] = bool(self._ftdis[band])
-            antenna['sel'] = self._antennas[antname]
+            antenna['sel'] = self._antennas[band]
+            antenna['delay'] = self._delays[band]
 
         # from pprint import pprint
         # pprint(kwargs)

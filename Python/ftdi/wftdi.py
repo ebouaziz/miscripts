@@ -66,8 +66,8 @@ class Root(object):
             antenna['status'] = bool(self._ftdis[band])
             antenna['sel'] = self._antennas[antname]
 
-        #from pprint import pprint
-        #pprint(kwargs)
+        # from pprint import pprint
+        # pprint(kwargs)
         tmpl = self.env.get_template('index.html')
         return tmpl.render(**kwargs)
 

@@ -25,9 +25,10 @@ from threading import Timer
 class Root(object):
 
     PREFIX = 'ant'
+    DEVICE = 0x6001
     ANTENNAS = {
         900: (4, 500),
-        2450: (16, 500)
+        # 2450: (16, 500)
     }
 
     def __init__(self):
@@ -39,6 +40,8 @@ class Root(object):
         self._bailout = False
         self._timers = {}
         self._started = False
+        self._resume = True
+        cherrypy.engine.subscribe('stop', self._stop)
 
     @cherrypy.expose
     def index(self, k='', v=''):
@@ -91,22 +94,24 @@ class Root(object):
     def _switch_antenna(self, ant, interval):
         self._antennas[ant] = (self._antennas[ant] + 1) % self.ANTENNAS[ant][0]
         self._update_antenna(ant)
-        timer = Timer(interval, self._switch_antenna, args=(ant, interval))
-        self._timers[ant] = timer
-        timer.start()
+        if self._resume:
+            timer = Timer(interval, self._switch_antenna, args=(ant, interval))
+            self._timers[ant] = timer
+            timer.start()
 
     def _update_antenna(self, ant):
             value = self._antennas[ant]
-            cherrypy.log('Update ant: %d, value %d' % (ant, value))
+            # cherrypy.log('Update ant: %d, value %d' % (ant, value))
             try:
                 self._connect()
-                self._ftdis[ant].write_port(self._antennas[ant])
+                self._ftdis[ant].write_port(value)
             except Exception as e:
                 cherrypy.log('FTDI Error: %s (%d MHz)' % (str(e), ant))
                 self._ftdis[ant] = False
 
     def _generate(self):
-        kwargs = {'antennas': OrderedDict()}
+        kwargs = {'antennas': OrderedDict(),
+                  'antcount': len(self.ANTENNAS)}
         for band in reversed(sorted(list(self.ANTENNAS))):
             count = self.ANTENNAS[band][0]
             antname = '%s_%d' % (self.PREFIX, band)
@@ -128,16 +133,19 @@ class Root(object):
             try:
                 serial = os.environ.get('FTDI%d' % ant, None)
                 gpio = GpioController()
-                print("OPEN interface %s" % port)
-                gpio.open(vendor=0x403, product=0x6010, interface=port,
+                cherrypy.log("Open interface %s" % port)
+                gpio.open(vendor=0x403, product=self.DEVICE, interface=port,
                           serial=serial, direction=0xFF)
                 gpio.read_port()
                 self._ftdis[ant] = gpio
             except Exception as e:
-                print("FAIL interface %s %s" % (port, e))
+                cherrypy.log("Failed interface %s %s" % (port, e))
                 self._ftdis[ant] = None
                 cherrypy.log('FTDI Error: %s (%s)' % (str(e), serial))
                 UsbTools.flush_cache()
+
+    def _stop(self):
+        self._resume = False
 
 
 def main():

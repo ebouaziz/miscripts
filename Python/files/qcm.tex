@@ -1,0 +1,33 @@
+\documentclass[a4,english,pdf,print_questionnaire_id,pagemark,stamp,oneside]{sdaps}
+\usepackage[utf8]{inputenc}
+\usepackage{setspace}
+
+\author{Sonia Regnard Delbassé}
+\title{English for dummies}
+
+\begin{document}
+  \begin{questionnaire}
+    \begin{info}
+      \VAR{title}
+    \end{info}
+
+    \section{Questions}
+
+    \BLOCK{ for q in questions }
+      % Question
+      \begin{choicequestion}[\VAR{ q.count }]{\VAR{ q.start } \underline{\hspace{2cm}} \VAR{ q.end }}
+      \centering
+      \BLOCK{ for a in q.answers }
+        \choiceitem{\VAR{a}}
+      \BLOCK{ endfor }
+      \end{choicequestion}
+      % \medskip
+      \smallskip
+
+    \BLOCK{ endfor }
+
+    \section{Comments}
+    \textbox{5cm}{Feel free to leave your comments here}
+
+  \end{questionnaire}
+\end{document}

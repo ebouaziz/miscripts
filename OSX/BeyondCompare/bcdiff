@@ -1,0 +1,9 @@
+#!/bin/sh
+
+DIR=`dirname $0`
+if [ "$1" = "-e" ]; then
+    shift
+    svn diff --diff-cmd ${DIR}/bcsvn $*
+else
+    svn diff --diff-cmd ${DIR}/bcompsvn $*
+fi

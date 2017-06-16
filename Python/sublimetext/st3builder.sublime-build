@@ -1,0 +1,4 @@
+{
+   "shell_cmd": "/usr/local/bin/st3build ${file_path}",
+   "selector": "source.c",
+}

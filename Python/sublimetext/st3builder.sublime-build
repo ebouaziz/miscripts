@@ -1,4 +1,5 @@
 {
    "shell_cmd": "/usr/local/bin/st3build ${file_path}",
    "selector": "source.c",
+   "file_regex": "^([^:]*):([0-9]+):(?:([0-9]+):)?(?: fatal)? error: (.*)$",
 }

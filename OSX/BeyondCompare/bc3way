@@ -37,7 +37,7 @@ bleft=`svn log -l1 -v -r $working | grep "^  " | head -1 | sed 's%^[^/]*%%g' | c
 # echo "right:    $bincoming"
 # echo "result:   $bresult"
 
-/usr/local/bin/bcompare \
+/usr/local/bin/bcomp \
     -lefttitle="$bleft::$1" -righttitle="$bincoming::$1" \
     -centertitle="$bancestor::$1" -outputtitle="$bresult::$1" \
     $1.working $1.merge-right.* $1.merge-left.* $1

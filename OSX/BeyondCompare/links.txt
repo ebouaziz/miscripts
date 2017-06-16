@@ -1,2 +1,1 @@
-/Volumes/Backup/usr/local/bin/bcomp -> /Applications/Beyond Compare.app/Contents/MacOS/bcomp
-/Volumes/Backup/usr/local/bin/bcompare -> /Applications/Beyond Compare.app/Contents/MacOS/bcomp
+/usr/local/bin/bcomp -> /Applications/Beyond Compare.app/Contents/MacOS/bcomp

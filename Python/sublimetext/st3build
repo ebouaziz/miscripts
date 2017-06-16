@@ -1,0 +1,39 @@
+#!/usr/bin/env python3.5
+
+from os import sep as pathsep
+from os.path import basename, dirname, isdir, isfile, join as joinpath
+from subprocess import run
+from sys import argv, exit, stderr
+
+
+def main():
+    if len(argv) < 2:
+        raise RuntimeError('No build file/path specified')
+    lastdir = curdir = argv[1]
+    maxrecurse = 100
+    project = ''
+    while curdir and curdir != pathsep:
+        maxrecurse -= 1
+        if not maxrecurse:
+            raise RuntimeError('Infinite search')
+        if not isfile(joinpath(curdir, 'CMakeLists.txt')):
+            if isdir(joinpath(curdir, 'build')):
+                project = basename(lastdir)
+                break
+        lastdir = curdir
+        curdir = dirname(curdir)
+    if not project:
+        raise RuntimeError('Unable to find project directory')
+    args = ['host/bin/build.sh', project]
+    cp = run(args, shell=False, cwd=curdir,)
+    if cp.returncode:
+        raise RuntimeError("  build command '%s' failed\n" % ' '.join(args))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+        exit(0)
+    except Exception as ex:
+        print(str(ex), file=stderr)
+        exit(1)

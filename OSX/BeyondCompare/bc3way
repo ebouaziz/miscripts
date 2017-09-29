@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# be sure to provide a filename
+if [ "$1" = "" ]; then
+    echo "$0 <file>" >&2
+    exit 1
+fi
+
+# do not let SVN perform i18n translations
+export LC_ALL="C"
+
+left=`svn st | grep $1 | grep merge-left | sed 's/^.*r\([0-9]*\)$/\1/g'`
+right=`svn st | grep $1 | grep merge-right | sed 's/^.*r\([0-9]*\)$/\1/g'`
+working=`svn log -l2 -q $1 | grep -v ^- | tail -1 | sed 's/^\r\([0-9]*\).*/\1/g'`
+
+log=`svn log -q $1 | grep -v ^- | sed 's/^\r\([0-9]*\).*/\1/g'`
+for l in $log; do
+    if [ $l -le $left ]; then
+        left="$l"
+        break
+    fi
+done
+for l in $log; do
+    if [ $l -le $right ]; then
+        right="$l"
+        break
+    fi
+done
+
+bincoming=` svn diff -N . | tail -1 | sed 's%^[^/]*%%g' | cut -d':' -f1`
+bancestor=`svn log -l1 -v -r $left | grep "^  " | head -1 | sed 's%^[^/]*%%g' | cut -d' ' -f1`
+bresult=`svn log -l1 -v -r $right | grep "^  " | head -1 | sed 's%^[^/]*%%g' | cut -d' ' -f1`
+bleft=`svn log -l1 -v -r $working | grep "^  " | head -1 | sed 's%^[^/]*%%g' | cut -d' ' -f1`
+
+# echo "ancestor: $bancestor"
+# echo "left:     $bleft"
+# echo "right:    $bincoming"
+# echo "result:   $bresult"
+
+/usr/local/bin/bcomp \
+    -lefttitle="$bleft::$1" -righttitle="$bincoming::$1" \
+    -centertitle="$bancestor::$1" -outputtitle="$bresult::$1" \
+    $1.working $1.merge-right.* $1.merge-left.* $1

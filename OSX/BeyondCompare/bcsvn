@@ -1,0 +1,4 @@
+#!/bin/sh
+
+WC=`echo "$5" | cut -d'(' -f1 | tr -d "\t"`
+/usr/local/bin/bcomp "$6" "$WC" -title1="$3" -title2="$5"

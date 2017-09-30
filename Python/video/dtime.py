@@ -15,13 +15,13 @@ def parsetime(timestr, fps=25.0):
     main = parts[0]
     if len(parts) == 1:
         ms = 0
-    if len(parts) == 2:
+    elif len(parts) == 2:
         frame = int(parts[1])
         if frame >= fps:
             raise ValueError('Invalid frame count')
         ms = 1000.0*frame/fps
     else:
-        raise ValueError('Invalid time format')
+        raise ValueError('Invalid time format: %s' % timestr)
     fmt = ':'.join(['%%%s' % f for f in reversed('SMH'[:main.count(':')+1])])
     mt = dt.strptime(main, fmt).timetuple()
     return td(seconds=mt.tm_sec, minutes=mt.tm_min, hours=mt.tm_hour,
@@ -40,7 +40,13 @@ def difftime(ts1, ts2, fps=25.0):
     ms = ts-s
     its = td(seconds=s)
     frame = int(fps*ms)
-    return '%s.%d' % (its, frame)
+    if frame:
+        tstr = '%s.%d' % (its, frame)
+    else:
+        tstr = str(its)
+    if tstr.startswith('0:'):
+        tstr = tstr[2:]
+    return tstr
 
 
 def main():

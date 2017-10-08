@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.5
 
-from os import environ, sep as pathsep, putenv
+from os import environ, sep as pathsep
 from os.path import basename, dirname, isdir, isfile, join as joinpath
 from subprocess import run
 from sys import argv, exit, stderr
@@ -43,7 +43,8 @@ def main():
                     sys_paths = environ.get('PATH').split(':')
                     opt_paths = []
                     for path in line.strip().split(':'):
-                        if path and path not in opt_paths and path not in sys_paths: 
+                        if path and path not in opt_paths and \
+                             path not in sys_paths:
                             opt_paths.append(path)
                     sys_paths = opt_paths + sys_paths
                     value = ':'.join(sys_paths)

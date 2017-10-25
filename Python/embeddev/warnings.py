@@ -270,8 +270,9 @@ class WarningShell(Cmd):
             print(str(ex))
 
     def complete_clear(self, text, line, begidx, endidx):
-        candidates = self._chooser.enumerate('selected')
-        return [w.startswith('no-') and w[3:] or w for w in candidates]
+        candidates = [w.startswith('no-') and w[3:] or w for w in
+                      self._chooser.enumerate('selected')]
+        return [w for w in candidates if w.startswith(text)]
 
     def do_clear(self, arg):
         """Reset activation status of a warnings"""

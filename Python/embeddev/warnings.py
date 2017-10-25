@@ -49,8 +49,15 @@ class Warning(object):
         self.controllees = set()
 
     @property
-    def enabled(self):
-        return bool(self.selected or self.default)
+    def is_active(self):
+        if self.selected is not None:
+            # explicilty enabled or disabled
+            return self.selected
+        if self.controlled is not None:
+            # enabled or disabled via a master warning
+            return self.controlled
+        # fallback to default enablement
+        return self.default
 
     def is_lang(self, language):
         return self.language == language
@@ -79,10 +86,10 @@ class WarningChooser(object):
     DW_CRE = recompile(r'\(\-W([\w\-]+)\)')
 
     def __init__(self, language=None):
-        self._warnings = {}
+        self._all_warnings = {}
         self._language = Warning.LANGUAGES[language or
                                            Warning.DEFAULT_LANGUAGE]
-        self._selected = {}
+        self._warnings = {}
 
     def load(self, fp):
         if rl:
@@ -101,15 +108,15 @@ class WarningChooser(object):
                 else:
                     warning, subwarns = warnings, ''
                 w = Warning(warning, options, *self.DW_CRE.findall(subwarns))
-                self._warnings[w.name] = w
+                self._all_warnings[w.name] = w
             except Exception as ex:
                 print('Error: %s @ line %d: %s' % (str(ex), lpos, line),
                       file=stderr)
                 continue
-        for warning in self._warnings.values():
+        for warning in self._all_warnings.values():
             for ctrlname in warning.controllers:
                 try:
-                    controller = self._warnings[ctrlname]
+                    controller = self._all_warnings[ctrlname]
                 except KeyError:
                     raise WarningError('Invalid warning %s controlled by %s' %
                                        (ctrlname, warning.name))
@@ -117,43 +124,69 @@ class WarningChooser(object):
         self.reset()
 
     def reset(self):
-        self._selected = {wn: wo for wn,wo in self._warnings.items()
+        self._warnings = {wn: wo for wn,wo in self._all_warnings.items()
                           if wo.is_lang(self._language) and not wo.useless}
-        for warning in self._selected.values():
+        for warning in self._warnings.values():
             discarded = set()
             for ctrlname in warning.controllees:
-                if ctrlname not in self._selected:
+                if ctrlname not in self._warnings:
                     discarded.add(ctrlname)
             warning.discard_control(discarded)
 
-    def enumerate(self, wfilter=None):
-        warnings = self._selected
-        if wfilter is None:
-            filter_func = lambda w: True
-        else:
-            filter_func = lambda w: (w.enabled == wfilter) and \
-                                        (w.controlled is None or \
-                                             w.controlled == wfilter)
-        selection = [wn for wn in warnings if filter_func(warnings[wn])]
-        return selection
+#    def enumerate(self, wfilter=None):
+#        warnings = self._warnings
+#        if wfilter is None:
+#            filter_func = lambda w: True
+#        else:
+#            filter_func = lambda w: (w.enabled == wfilter) and \
+#                                        (w.controlled is None or \
+#                                             w.controlled == wfilter)
+#        selection = [wn for wn in warnings if filter_func(warnings[wn])]
+#        return selection
+#
+#    def enumerate_all(self):
+#        return self.enumerate()
+#
+#    def enumerate_selection(self, strict=False):
+#        selection = self.enumerate(True)
+#        if strict:
+#            selection = [wn for wn in selection if self._warnings[wn].selected]
+#        return selection
+#
+#    def enumerate_available(self):
+#        return self.enumerate(False)
+#
 
-    def enumerate_all(self):
-        return self.enumerate()
+    def enumerate(self, kind=None):
+        if kind is None or kind == 'all':
+            return set(self._warnings.keys())
+        if kind == 'active':
+            return set([wn for wn, wo in self._warnings.items()
+                    if wo.is_active])
+        if kind == 'nonactive':
+            return set([wn for wn, wo in self._warnings.items()
+                    if not wo.is_active])
+        if kind == 'selected':
+            selection = set()
+            for wn, wo in self._warnings.items():
+                if wo.selected is None:
+                    continue
+                if wo.selected:
+                    selection.add(wn)
+                else:
+                    selection.add('no-%s' % wn)
+            return selection
 
-    def enumerate_selection(self, strict=False):
-        selection = self.enumerate(True)
-        if strict:
-            selection = [wn for wn in selection if self._selected[wn].selected]
-        return selection
-
-    def enumerate_available(self):
-        return self.enumerate(False)
-
-    def show(self, selection, show_controllees=True):
+    def show(self, kind=None, showsub=True):
+        selection = self.enumerate(kind)
         for warn in sorted(selection):
-            ctrlstr = ', '.join(sorted(self._selected[warn].controllees))
+            if warn.startswith('no-'):
+                rootwarn = warn[3:]
+            else:
+                rootwarn = warn
+            ctrlstr = ', '.join(sorted(self._warnings[rootwarn].controllees))
             main = '  %s' % warn
-            if show_controllees and ctrlstr:
+            if showsub and ctrlstr:
                 cols = get_terminal_size((80, 25))[0]
                 info = '  %s)' % shorten(' '.join((main, '(%s' % ctrlstr)),
                                        width=cols-4,
@@ -162,42 +195,33 @@ class WarningChooser(object):
             else:
                 info = main
             print(info)
-        print('%d out of %d' % (len(selection), len(self._selected)))
-
-    def show_all(self):
-        selection = self.enumerate()
-        self.show(selection)
-
-    def show_selection(self):
-        selection = self.enumerate_selection()
-        self.show(selection)
-
-    def show_available(self):
-        selection = self.enumerate_available()
-        self.show(selection)
-
-    def show_enabled(self):
-        selection = self.enumerate_selection(True)
-        self.show(selection, False)
+        print('%d out of %d' % (len(selection), len(self._warnings)))
 
     def enable(self, name, enable):
         try:
-            warning = self._selected[name]
+            warning = self._warnings[name]
         except KeyError:
             raise WarningError('No such warning: %s' % name)
         if warning.selected == enable:
             raise WarningError('Warning %s already %sselected' %
                                (name, not enable and 'not ' or ''))
-        if warning.default == enable or warning.controlled == enable:
+        if warning.is_active == enable:
             print('Warning %s was already automatically %sselected' %
                   (name, not enable and 'not ' or ''))
         warning.selected = enable
         for wn in sorted(self._get_controllees(name)):
-            self._selected[wn].controlled = enable
+            self._warnings[wn].controlled = enable
+
+    def clear(self, name):
+        try:
+            warning = self._warnings[name]
+        except KeyError:
+            raise WarningError('No such warning: %s' % name)
+        warning.selected = None
 
     def _get_controllees(self, name):
-        controllees = set(self._selected[name].controllees)
-        for wn in self._selected[name].controllees:
+        controllees = set(self._warnings[name].controllees)
+        for wn in self._warnings[name].controllees:
             controllees.update(self._get_controllees(wn))
         return controllees
 
@@ -206,28 +230,12 @@ class WarningShell(Cmd):
     """
     """
 
-    intro = 'Warning selector'
+    intro = 'Welcome to the Warning selector\n'
     prompt = 'Ws> '
 
     def __init__(self, chooser):
         super(WarningShell, self).__init__()
         self._chooser = chooser
-
-    def do_active(self, arg):
-        """Show active warnings"""
-        self._chooser.show_selection()
-
-    def do_list(self, arg):
-        """Show all selected warnings"""
-        self._chooser.show_enabled()
-
-    def do_view(self, arg):
-        """Show all warnings"""
-        self._chooser.show_all()
-
-    def do_available(self, arg):
-        """Show non-activated warnings"""
-        self._chooser.show_available()
 
     def do_reset(self, arg):
         """Reset the warning list"""
@@ -235,14 +243,30 @@ class WarningShell(Cmd):
 
     def do_quit(self, arg):
         """Exit the application"""
-        selection = self._chooser.enumerate_selection(True)
-        for wn in selection:
+        selection = self._chooser.enumerate('selected')
+        for wn in sorted(selection):
             print('-W%s' % wn)
         return True
 
+    def do_all(self, arg):
+        """Show all available warnings"""
+        self._chooser.show('all')
+
+    def do_active(self, arg):
+        """Show active warnings"""
+        self._chooser.show('active')
+
+    def do_nonactive(self, arg):
+        """Show non-activated warnings"""
+        self._chooser.show('nonactive')
+
+    def do_selected(self, arg):
+        """Show non-activated warnings"""
+        self._chooser.show('selected')
+
     def complete_enable(self, text, line, begidx, endidx):
-        return [w for w in self._chooser.enumerate_available()
-                if w.startswith(text)]
+        candidates = self._chooser.enumerate('nonactive')
+        return [w for w in candidates if w.startswith(text)]
 
     def do_enable(self, arg):
         """Select a new warning"""
@@ -254,8 +278,8 @@ class WarningShell(Cmd):
             print(str(ex))
 
     def complete_disable(self, text, line, begidx, endidx):
-        return [w for w in self._chooser.enumerate_selection()
-                if w.startswith(text)]
+        candidates = self._chooser.enumerate('active')
+        return [w for w in candidates if w.startswith(text)]
 
     def do_disable(self, arg):
         """Select a new warning"""
@@ -266,10 +290,18 @@ class WarningShell(Cmd):
         except WarningError as ex:
             print(str(ex))
 
-    complete_select = complete_enable
-    complete_unselect = complete_disable
-    do_select = do_enable
-    do_unselect = do_disable
+    def complete_clear(self, text, line, begidx, endidx):
+        candidates = self._chooser.enumerate('selected')
+        return [w.startswith('no-') and w[3:] or w for w in candidates]
+
+    def do_clear(self, arg):
+        """Reset activation status of a warnings"""
+        if not arg:
+            return
+        try:
+            self._chooser.clear(arg)
+        except WarningError as ex:
+            print(str(ex))
 
 
 def main():

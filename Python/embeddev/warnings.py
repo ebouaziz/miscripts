@@ -39,7 +39,7 @@ class Warning(object):
         self.default = 'D' in options
         self.useless = 'U' in options
         self.selected = None
-        self.controlled = None
+        self.controlled = set()
         languages = [lang for lang in self.LANGUAGES if lang in options]
         if len(languages) > 1:
             raise ValueError('Too many languages: %s' % ','.join(languages))
@@ -53,9 +53,9 @@ class Warning(object):
         if self.selected is not None:
             # explicilty enabled or disabled
             return self.selected
-        if self.controlled is not None:
+        if self.controlled:
             # enabled or disabled via a master warning
-            return self.controlled
+            return True
         # fallback to default enablement
         return self.default
 
@@ -133,30 +133,6 @@ class WarningChooser(object):
                     discarded.add(ctrlname)
             warning.discard_control(discarded)
 
-#    def enumerate(self, wfilter=None):
-#        warnings = self._warnings
-#        if wfilter is None:
-#            filter_func = lambda w: True
-#        else:
-#            filter_func = lambda w: (w.enabled == wfilter) and \
-#                                        (w.controlled is None or \
-#                                             w.controlled == wfilter)
-#        selection = [wn for wn in warnings if filter_func(warnings[wn])]
-#        return selection
-#
-#    def enumerate_all(self):
-#        return self.enumerate()
-#
-#    def enumerate_selection(self, strict=False):
-#        selection = self.enumerate(True)
-#        if strict:
-#            selection = [wn for wn in selection if self._warnings[wn].selected]
-#        return selection
-#
-#    def enumerate_available(self):
-#        return self.enumerate(False)
-#
-
     def enumerate(self, kind=None):
         if kind is None or kind == 'all':
             return set(self._warnings.keys())
@@ -210,7 +186,10 @@ class WarningChooser(object):
                   (name, not enable and 'not ' or ''))
         warning.selected = enable
         for wn in sorted(self._get_controllees(name)):
-            self._warnings[wn].controlled = enable
+            if enable:
+                self._warnings[wn].controlled.add(name)
+            else:
+                self._warnings[wn].controlled.discard(name)
 
     def clear(self, name):
         try:

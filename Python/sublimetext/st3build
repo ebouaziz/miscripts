@@ -1,7 +1,8 @@
 #!/usr/bin/env python3.5
 
 from os import environ, sep as pathsep
-from os.path import basename, dirname, isdir, isfile, join as joinpath
+from os.path import (basename, dirname, isdir, isfile, join as joinpath,
+                     splitext)
 from subprocess import run
 from sys import argv, exit, stderr
 
@@ -9,7 +10,9 @@ from sys import argv, exit, stderr
 def main():
     if len(argv) < 2:
         raise RuntimeError('No build file/path specified')
-    lastdir = projdir = argv[1]
+    filename = argv[1]
+    lastdir = projdir = dirname(filename)
+    ext = splitext(filename)[-1].lower()
     maxrecurse = 100
     project = ''
     while projdir and projdir != pathsep:
@@ -49,7 +52,10 @@ def main():
                     sys_paths = opt_paths + sys_paths
                     value = ':'.join(sys_paths)
                 environ[name] = value
-    args = ['host/bin/build.sh', project]
+    args = ['host/bin/build.sh']
+    if ext == '.rst':
+        args.append('-Y')
+    args.append(project)
     cp = run(args, shell=False, cwd=projdir)
     if cp.returncode:
         raise RuntimeError("  build command '%s' failed\n" % ' '.join(args))

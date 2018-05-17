@@ -1,4 +1,4 @@
-# Useless / Default / ObjC / cXx / opencL / ppenmP?
+# Useless / Default / ObjC / cXx / opencL / openmP? /cudA
 D   -W#pragma-messages
 D   -W#warnings
 D   -WCFString-literal
@@ -40,7 +40,7 @@ D   -Wassume
 D O -Wat-protocol
 D   -Watomic-memory-ordering
   O -Watomic-properties
-D   -Watomic-property-with-user-defined-accessor
+D O -Watomic-property-with-user-defined-accessor
 D   -Wattribute-packed-for-bitfield
 D   -Wattributes
 D   -Wauto-disable-vptr-sanitizer
@@ -122,7 +122,7 @@ D   -Wcoroutine
     -Wcovered-switch-default
   O -Wcstring-format-directive
 U   -Wctor-dtor-privacy
-    -Wcuda-compat
+  A -Wcuda-compat
   O -Wcustom-atomic-properties (-Watomic-properties)
 D   -Wdangling-else (-Wparentheses)
 D   -Wdangling-field
@@ -251,7 +251,7 @@ D   -Wignored-pragma-intrinsic (-Wignored-pragmas)
 D   -Wignored-pragmas (-Wpragmas)
     -Wignored-qualifiers (-Wextra)
     -Wimplicit (-Wmost)
-    -Wimplicit-atomic-properties (-Watomic-properties)
+  O -Wimplicit-atomic-properties (-Watomic-properties)
 D   -Wimplicit-conversion-floating-point-to-bool
 D   -Wimplicit-exception-spec-mismatch
     -Wimplicit-fallthrough
@@ -271,7 +271,7 @@ D   -Wincompatible-library-redeclaration
 D   -Wincompatible-ms-struct
 D   -Wincompatible-pointer-types
 D   -Wincompatible-pointer-types-discards-qualifiers (-Wincompatible-pointer-types)
-D   -Wincompatible-property-type
+D O -Wincompatible-property-type
 D   -Wincompatible-sysroot
 D   -Wincomplete-implementation
   X -Wincomplete-module
@@ -374,13 +374,13 @@ D   -Wnull-arithmetic
 D   -Wnull-character
 D   -Wnull-conversion (-Wconversion)
 D   -Wnull-dereference
-D   -Wnullability
-D   -Wnullability-completeness
-D   -Wnullability-completeness-on-arrays (-Wnullability-completeness)
-D   -Wnullability-declspec
-    -Wnullability-extension (-Wpedantic)
-D   -Wnullability-inferred-on-nested-type
-    -Wnullable-to-nonnull-conversion
+D O -Wnullability
+D O -Wnullability-completeness
+D O -Wnullability-completeness-on-arrays (-Wnullability-completeness)
+D O -Wnullability-declspec
+  O -Wnullability-extension (-Wpedantic)
+D O -Wnullability-inferred-on-nested-type
+  O -Wnullable-to-nonnull-conversion
   O -Wobjc-autosynthesis-property-ivar-name-match
   O -Wobjc-circular-container
   O -Wobjc-cocoa-api
@@ -452,8 +452,8 @@ D   -Wprivate-header
 D   -Wprivate-module
 D   -Wprofile-instr-out-of-date
 D   -Wprofile-instr-unprofiled
-D   -Wproperty-access-dot-syntax
-D   -Wproperty-attribute-mismatch
+D O -Wproperty-access-dot-syntax
+D O -Wproperty-attribute-mismatch
 D   -Wprotocol
 D   -Wprotocol-property-synthesis-ambiguity
 D   -Wqualified-void-return-type
@@ -548,14 +548,14 @@ D   -Wtautological-constant-out-of-range-compare (-Wtautological-compare)
 D   -Wtautological-pointer-compare (-Wtautological-compare) (-Waddress)
 D   -Wtautological-undefined-compare (-Wtautological-compare)
 D   -Wtentative-definition-incomplete-type
-    -Wthread-safety
-    -Wthread-safety-analysis (-Wthread-safety)
-    -Wthread-safety-attributes (-Wthread-safety)
-    -Wthread-safety-beta
-    -Wthread-safety-negative
-    -Wthread-safety-precise (-Wthread-safety)
-    -Wthread-safety-reference (-Wthread-safety)
-    -Wthread-safety-verbose
+  X -Wthread-safety
+  X -Wthread-safety-analysis (-Wthread-safety)
+  X -Wthread-safety-attributes (-Wthread-safety)
+  X -Wthread-safety-beta
+  X -Wthread-safety-negative
+  X -Wthread-safety-precise (-Wthread-safety)
+  X -Wthread-safety-reference (-Wthread-safety)
+  X -Wthread-safety-verbose
 D   -Wtrigraphs (-Wmost)
 U   -Wtype-limits
 D   -Wtype-safety
@@ -613,7 +613,7 @@ U   -Wunused-local-typedefs
   X -Wunused-member-function
     -Wunused-parameter (-Wextra)
     -Wunused-private-field (-Wunused)
-    -Wunused-property-ivar (-Wunused)
+  O -Wunused-property-ivar (-Wunused)
 D   -Wunused-result
 D   -Wunused-value (-Wunused)
     -Wunused-variable (-Wunused)

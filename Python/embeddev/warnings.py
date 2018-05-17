@@ -84,6 +84,7 @@ class WarningChooser(object):
     """
 
     DW_CRE = recompile(r'\(\-W([\w\-]+)\)')
+    INVPREFIX = 'no-'
 
     def __init__(self, language=None):
         self._all_warnings = {}
@@ -123,6 +124,16 @@ class WarningChooser(object):
                 controller.add_control(warning.name)
         self.reset()
 
+    def preset(self, fp):
+        for lpos, line in enumerate(fp, start=1):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            line.lstrip('-').lstrip('W')
+            enable = not line.startswith(self.INVPREFIX)
+            self.enable(not enable and line[len(self.INVPREFIX):] or line,
+                        enable)
+
     def reset(self):
         self._warnings = {wn: wo for wn,wo in self._all_warnings.items()
                           if wo.is_lang(self._language) and not wo.useless}
@@ -156,8 +167,8 @@ class WarningChooser(object):
     def show(self, kind=None, showsub=True):
         selection = self.enumerate(kind)
         for warn in sorted(selection):
-            if warn.startswith('no-'):
-                rootwarn = warn[3:]
+            if warn.startswith(self.INVPREFIX):
+                rootwarn = warn[len(self.INVPREFIX):]
             else:
                 rootwarn = warn
             ctrlstr = ', '.join(sorted(self._warnings[rootwarn].controllees))
@@ -270,7 +281,8 @@ class WarningShell(Cmd):
             print(str(ex))
 
     def complete_clear(self, text, line, begidx, endidx):
-        candidates = [w.startswith('no-') and w[3:] or w for w in
+        prefix = WarningChooser.INVPREFIX
+        candidates = [w.startswith(prefix) and w[len(prefix):] or w for w in
                       self._chooser.enumerate('selected')]
         return [w for w in candidates if w.startswith(text)]
 
@@ -291,8 +303,11 @@ def main():
     try:
         argparser = ArgumentParser(description=modules[__name__].__doc__)
         argparser.add_argument('-f', '--file', type=FileType('rt'),
+                               metavar='WARNINGS',
                                required=True,
-                               help='increase verbosity')
+                               help='warning description file')
+        argparser.add_argument('-p', '--preload', type=FileType('rt'),
+                               help='preset warnings')
         argparser.add_argument('-l', '--language',
                                choices=Warning.LANGUAGES.values(),
                                help='increase verbosity')
@@ -303,6 +318,8 @@ def main():
 
         wc = WarningChooser()
         wc.load(args.file)
+        if args.preload:
+            wc.preset(args.preload)
         ws = WarningShell(wc)
         ws.cmdloop()
 

@@ -1,0 +1,10 @@
+CL4
+conversion
+shadow-all
+tautological-compare
+unreachable-code-aggressive
+deprecated
+documentation
+documentation-unknown-command
+implicit-fallthrough
+loop-analysis

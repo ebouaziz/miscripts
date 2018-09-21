@@ -7,7 +7,7 @@ import os
 from sys import modules, stderr
 from argparse import ArgumentParser
 from collections import OrderedDict, defaultdict
-from configparser import ConfigParser
+from configparser import RawConfigParser
 
 
 def run(infile, outfile, debug=False):
@@ -45,7 +45,7 @@ def run(infile, outfile, debug=False):
 
 
 def ini2dict(inifile, debug):
-    cp = ConfigParser(strict=False)
+    cp = RawConfigParser(strict=False)
     sections = dict()
     if debug:
         print('Parsing %s' % inifile)
@@ -66,7 +66,7 @@ def ini2dict(inifile, debug):
 
 
 def dict2ini(inifile, sections):
-    cp = ConfigParser(strict=True)
+    cp = RawConfigParser(strict=True)
     cp.read_dict(sections)
     with open(inifile, 'wt') as inifp:
         cp.write(inifp)
